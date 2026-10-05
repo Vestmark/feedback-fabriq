@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vestmark AI Feedback Assistant</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f7fa;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    @media (max-width: 600px) {
+      body { padding: 1rem 0.5rem; }
+    }
+    .dev-banner {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #fbbf24; color: #1a1a2e; text-align: center;
+      font-size: 0.75rem; font-weight: 600; padding: 0.25rem;
+      z-index: 9999;
+    }
+    .container {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    header { text-align: center; padding-bottom: 0.5rem; position: relative; }
+    .logo { display: flex; justify-content: center; margin-bottom: 0.75rem; }
+    .logo-icon { height: 48px; }
+    h1 { font-size: 1.6rem; font-weight: 700; }
+    @media (max-width: 600px) { h1 { font-size: 1.3rem; } }
+    .subtitle { color: #64748b; font-size: 0.95rem; margin-top: 0.35rem; }
+    .user-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #3b82f6;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.75rem; }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #3b82f6;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .badge:hover { background: #dbeafe; transform: scale(1.05); }
+    .badge:active { transform: scale(0.97); }
+    @media (max-width: 600px) { .badge { padding: 0.5rem 1rem; font-size: 0.8rem; } }
+    .chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 50vh; overflow-y: auto; padding: 1rem; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; }
+    @media (max-width: 600px) { .chat { max-height: 55vh; padding: 0.75rem; } }
+    .message { display: flex; max-width: 85%; }
+    .message.assistant { align-self: flex-start; }
+    .message.user { align-self: flex-end; }
+    .message-content { padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; }
+    .message-content strong { font-weight: 600; }
+    .message-content em { font-style: italic; }
+    .message.assistant .message-content { background: #f1f5f9; color: #1a1a2e; }
+    .message.user .message-content { background: #eff6ff; border: 1px solid #bfdbfe; color: #3b82f6; }
+    .typing-indicator { display: flex; gap: 6px; padding: 0.75rem 1rem; align-self: flex-start; align-items: center; }
+    .typing-indicator .typing-label { font-size: 0.8rem; color: #94a3b8; margin-right: 0.5rem; }
+    .typing-indicator span { width: 8px; height: 8px; background: #94a3b8; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    .input-area { display: flex; gap: 0.5rem; align-items: flex-end; background: #fff; padding: 0.75rem; border-radius: 12px; border: 1px solid #e2e8f0; position: sticky; bottom: 1rem; }
+    @media (max-width: 600px) { .input-area { padding: 0.5rem; gap: 0.4rem; } }
+    textarea { flex: 1; border: none; outline: none; resize: none; font-family: inherit; font-size: 0.95rem; line-height: 1.5; padding: 0.5rem; max-height: 120px; background: transparent; }
+    .btn { border: none; border-radius: 7px; padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+    @media (max-width: 600px) { .btn { padding: 0.6rem 1.1rem; font-size: 0.8rem; min-height: 44px; } }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-done { background: #e2e8f0; color: #1a1a2e; }
+    .btn-done:hover { background: #cbd5e1; }
+    .btn-send { background: #3b82f6; color: #fff; }
+    .btn-send:hover:not(:disabled) { background: #2563eb; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #e2e8f0; color: #1a1a2e; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .summary-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .summary-panel {
+      background: #fff;
+      border-radius: 16px;
+      border: 2px solid #3b82f6;
+      padding: 2rem;
+      box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+      width: 92%;
+      max-width: 680px;
+      min-height: 50vh;
+      display: flex;
+      flex-direction: column;
+      cursor: move;
+      user-select: none;
+    }
+    .summary-panel.dragging { opacity: 0.9; }
+    .summary-panel h2 { font-size: 1.3rem; margin-bottom: 1.25rem; color: #1a1a2e; font-weight: 700; cursor: move; }
+    .summary-display {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 1.25rem;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 1.25rem;
+      flex: 1;
+      min-height: 250px;
+      overflow-y: auto;
+      cursor: default;
+      user-select: text;
+    }
+    .summary-display strong { font-weight: 700; color: #1e293b; }
+    .summary-textarea {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 1.25rem;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.7;
+      resize: vertical;
+      margin-bottom: 1.25rem;
+      flex: 1;
+      min-height: 250px;
+      cursor: text;
+      user-select: text;
+    }
+    .summary-actions { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
+    .thank-you-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .thank-you-dialog { background: #fff; border-radius: 12px; padding: 1.5rem 2rem; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.2); min-width: 280px; }
+    .thank-you-title { font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 0.75rem; }
+    .thank-you-dialog p { font-size: 1rem; color: #1a1a2e; margin-bottom: 1.25rem; }
+    .hidden { display: none !important; }
+
+    /* Feedback inbox (?view=all) */
+    .admin { width: 100%; max-width: 1100px; margin-top: 1.5rem; }
+    .admin h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .admin .sub { color: #64748b; font-size: 0.85rem; margin-bottom: 1rem; }
+    .admin .bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .admin .bar input, .admin .bar select, .admin td select, .admin td input { font: inherit; font-size: 0.8rem; padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; }
+    .admin .bar input { min-width: 220px; }
+    .admin .count { color: #64748b; font-size: 0.8rem; margin-left: auto; }
+    .admin table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; font-size: 0.8rem; }
+    .admin th { text-align: left; background: #f1f5f9; padding: 0.6rem; font-weight: 600; white-space: nowrap; }
+    .admin td { padding: 0.6rem; border-top: 1px solid #e2e8f0; vertical-align: top; }
+    .admin td.ref { white-space: nowrap; font-family: ui-monospace, Menlo, monospace; }
+    .admin td input { width: 100%; min-width: 160px; }
+    .admin details summary { cursor: pointer; font-weight: 500; }
+    .admin details pre { white-space: pre-wrap; font-family: inherit; margin-top: 0.4rem; color: #475569; }
+    .admin .saved { color: #16a34a; font-size: 0.75rem; margin-left: 0.4rem; }
+    .admin .empty { padding: 2rem; text-align: center; color: #64748b; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; }
+    .admin a { color: #3b82f6; font-size: 0.8rem; }
+    .admin td .btn { padding: 0.3rem 0.6rem; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="dev-banner" id="dev-banner">DEV MODE — Auth bypassed, mock user</div>
+  <div class="container">
+    <header>
+      <div class="user-badge" id="user-badge">
+        <span>dev@vestmark.com</span>
+        <div class="user-avatar">DM</div>
+      </div>
+      <div class="logo">
+        <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 166.83"><defs><style>.v1{fill:#43505f;}.v2{fill:#b7b8b9;}.v3{fill:#91b6bb;}.v4{fill:#496b6e;}.v5{fill:#3b8d8b;}.v6{fill:#51b0cb;}</style></defs><g><g><polygon class="v1" points="246.28 35.8 225.61 107.41 205.13 35.8 184.07 35.8 215.97 130.13 234.6 130.13 266.75 35.8 246.28 35.8"/><path class="v2" d="M83.42,0a83.42,83.42,0,1,0,83.41,83.42A83.42,83.42,0,0,0,83.42,0Zm0,155.33a71.92,71.92,0,1,1,71.91-71.91A72,72,0,0,1,83.42,155.33Z"/><path class="v1" d="M320.32,69.74a28.4,28.4,0,0,0-12.05-10.32,39.74,39.74,0,0,0-16.41-3.27q-15.33,0-24.94,9.67t-9.61,27.8q0,19.35,10.64,27.93a38,38,0,0,0,24.57,8.58q16.88,0,26.25-10.18,6-6.39,6.76-12.6H306.91a14.19,14.19,0,0,1-13.88,8A18.54,18.54,0,0,1,283,112.72q-6.87-4.22-7.29-14.72h50.8a89.23,89.23,0,0,0-.6-13.84A34.24,34.24,0,0,0,320.32,69.74ZM276.12,86A19,19,0,0,1,281,75.17q3.87-4,10.89-4A16,16,0,0,1,302.69,75q4.35,3.76,4.86,11Z"/><path class="v1" d="M374.85,85.78q-16.35-3.59-19-5.06a4.75,4.75,0,0,1-2.7-4.54,5.35,5.35,0,0,1,2.54-4.35q2.53-1.86,8.5-1.86,7.25,0,10.27,3.71a10.84,10.84,0,0,1,2,5.57h18.23q-1.22-12.8-9.46-18T363.86,56Q350.08,56,342.47,63a21.73,21.73,0,0,0-7.6,16.6q0,8.19,4.87,12.54t16.75,7.36Q373,103.39,375.57,105a5.36,5.36,0,0,1-.62,9.47,19.22,19.22,0,0,1-8.58,1.6q-9.19,0-12.61-3.65c-1.28-1.36-2.12-3.67-2.5-6.91h-18.5a22.54,22.54,0,0,0,7.86,17.69q7.85,6.94,24.33,6.95,16.16,0,23.89-6.56a21.18,21.18,0,0,0,7.72-16.93,17.59,17.59,0,0,0-5.37-13.12Q385.75,88.35,374.85,85.78Z"/><path class="v1" d="M429.2,39.19l-18.05,2.24v17.1h-9.72V71.64h9.72v42.94q0,6.53,3.08,9.66,4.72,4.94,17.66,4.48l8.64-.32V114.66q-.9.06-1.83.09l-1.76,0q-5.56,0-6.65-1t-1.09-5.35V71.64h11.33V58.53H429.2Z"/><path class="v1" d="M547.4,64.53a20.35,20.35,0,0,0-8.13-6.27,24.36,24.36,0,0,0-9.09-1.79,27.14,27.14,0,0,0-12.54,2.88,23.16,23.16,0,0,0-8.89,9,20.61,20.61,0,0,0-6-8.38c-3.29-2.35-7.59-3.52-12.93-3.52q-8.44,0-13.76,4.1a29.25,29.25,0,0,0-6.4,7.74V58.13l-17.72,2.24v67.39h18.49v-42q0-5.7,1.47-8.58c1.8-3.37,5.29-5,10.5-5q6.72,0,9,5c.86,1.88,1.28,4.89,1.28,9v41.53h18.37V86.23a19.71,19.71,0,0,1,1.47-8Q515.4,72,523,72q6.52,0,9,4.86a14.63,14.63,0,0,1,1.28,6.53v44.41h18.69l.13-44a62.72,62.72,0,0,0-.64-10.31A20.15,20.15,0,0,0,547.4,64.53Z"/><path class="v1" d="M624.13,123c-.6-.85-1-2.47-1.09-4.86q-.13-4.74-.13-8.07V78q0-12.62-8.93-17.15a44.47,44.47,0,0,0-20.44-4.55q-17.68,0-24.94,9.22-4.56,5.88-5.14,15h17.6a13.11,13.11,0,0,1,2.59-6.4q2.73-3.21,9.28-3.2,5.84,0,8.85,1.63t3,5.92q0,3.51-3.93,5.18a28.66,28.66,0,0,1-7.29,1.6l-6.25.77q-10.64,1.35-16.12,4.48-10,5.76-10,18.62,0,9.93,6.21,15.33t15.74,5.41a26.5,26.5,0,0,0,13.39-3.4,37.42,37.42,0,0,0,8.75-7c.13,1.58.3,3,.51,4.22a21.12,21.12,0,0,0,1.15,4h19.84v-2.69A6.48,6.48,0,0,1,624.13,123Zm-19.4-22.33q-.19,9.15-5.23,12.6a19,19,0,0,1-11,3.46,10,10,0,0,1-6.4-2.08c-1.76-1.39-2.63-3.64-2.63-6.75a8.33,8.33,0,0,1,4.31-7.75,27.21,27.21,0,0,1,8.38-2.49l4.15-.77a29.21,29.21,0,0,0,4.9-1.25,19.69,19.69,0,0,0,3.53-1.76Z"/><path class="v1" d="M675.32,56.34q-8.19,0-13.31,4.29-3.13,2.57-7.36,9.53V58l-17.41,2.23v67.52h18.37V94.42q0-8.39,2.11-12.42,3.78-7.16,14.78-7.16c.56,0,1.28,0,2.18.06s1.92.13,3.07.26V56.47c-.81,0-1.33-.07-1.57-.1S675.66,56.34,675.32,56.34Z"/><polygon class="v1" points="724.03 84.31 749.03 58.33 726.35 58.33 703.35 84.64 703.35 33.75 685.43 35.99 685.43 127.76 703.35 127.76 703.35 105.81 710.9 97.96 727.8 127.76 750 127.76 724.03 84.31"/><path class="v3" d="M119.47,29.91,109.13,48.43a43.68,43.68,0,0,1,15.05,20l20.19-6.22A64.64,64.64,0,0,0,119.47,29.91Z"/><path class="v4" d="M42.08,96.8h0c-.22-.68-.42-1.36-.61-2.05a.3.3,0,0,0,0-.1c-.18-.65-.33-1.31-.48-2,0-.07,0-.14-.05-.21-.13-.62-.25-1.25-.35-1.88l-.06-.35c-.1-.59-.17-1.18-.24-1.78L40.2,88c-.06-.58-.1-1.16-.14-1.75,0-.17,0-.34,0-.52Q40,84.56,40,83.42a43.41,43.41,0,0,1,17.71-35L47.42,29.86A64.46,64.46,0,0,0,18.87,83.42q0,1.69.09,3.39c0,.25,0,.49.06.74.05.88.11,1.76.2,2.62l.09.66c.1.9.21,1.79.35,2.68l.09.48c.15.94.32,1.88.52,2.81,0,.1.05.19.07.29.21,1,.44,2,.7,3a.56.56,0,0,1,0,.12c.28,1,.58,2,.9,3h0c.38,1.18.81,2.35,1.26,3.5l19.37-8.41C42.43,97.82,42.25,97.31,42.08,96.8Z"/><path class="v5" d="M124.73,96.88c-.24.73-.5,1.45-.77,2.16l-.21.52c-.26.66-.55,1.32-.85,2l-.17.39c-.37.78-.76,1.56-1.18,2.31h0c-.42.76-.87,1.51-1.33,2.25l-.31.48c-.42.64-.85,1.27-1.3,1.89-.07.1-.13.2-.21.3-.53.71-1.08,1.41-1.65,2.09a3,3,0,0,1-.23.27c-.49.58-1,1.15-1.52,1.7l-.41.43c-.58.6-1.17,1.18-1.78,1.74l-.09.08c-.65.6-1.32,1.17-2,1.72l-.44.35c-.56.44-1.12.86-1.7,1.27l-.5.36c-.72.5-1.45,1-2.2,1.44h0c-.73.44-1.47.85-2.23,1.25l-.61.32q-.93.47-1.89.9l-.53.24c-.8.34-1.61.67-2.43,1l-.46.16c-.68.24-1.37.46-2.06.66l-.73.21c-.72.2-1.44.38-2.17.54l-.43.1c-.87.18-1.74.33-2.62.45-.23,0-.46.06-.69.09-.68.09-1.37.16-2.07.22l-.77.06c-.91,0-1.82.09-2.74.09s-1.83,0-2.74-.09l-.78-.06c-.69-.06-1.38-.13-2.06-.22l-.69-.08c-.88-.13-1.75-.28-2.62-.46l-.41-.1c-.73-.16-1.46-.34-2.18-.54l-.72-.2q-1.05-.32-2.07-.66l-.46-.16c-.82-.3-1.64-.62-2.44-1l-.49-.22c-.65-.29-1.29-.6-1.92-.92l-.59-.3c-.75-.39-1.5-.81-2.22-1.24l0,0c-.76-.46-1.5-.94-2.23-1.45l-.44-.31c-.6-.42-1.18-.86-1.76-1.31l-.4-.32a44,44,0,0,1-3.91-3.57l-.35-.37c-.54-.57-1.07-1.15-1.58-1.75l-.19-.23c-.59-.7-1.15-1.41-1.69-2.14l-.11-.15c-.48-.67-.95-1.35-1.4-2l-.26-.41c-.47-.74-.92-1.49-1.35-2.26h0c-.2-.37-.39-.74-.58-1.11l-19.36,8.4c.18.38.35.77.54,1.14a65,65,0,0,0,8.47,12.65l.12.13q2,2.34,4.23,4.47l.38.36c1.39,1.32,2.85,2.57,4.35,3.76l.63.49,1.34,1,.79.56c.72.51,1.45,1,2.18,1.47l1,.67,1.23.74,1.17.66c.38.22.76.44,1.15.64.7.38,1.41.75,2.13,1.1l1,.49,1.51.68,1,.45c.76.31,1.52.61,2.29.9l.75.27,2,.68.94.29c.69.21,1.39.41,2.09.59l.62.17c.89.23,1.78.43,2.69.62l.81.16c.72.14,1.44.27,2.17.39l.75.12c.93.14,1.88.26,2.83.36l.58,0c.79.08,1.59.14,2.39.18l.81,0c1,0,2,.07,3,.07s2,0,3-.07l.87,0c.74-.05,1.47-.1,2.2-.17l.84-.08q1.45-.15,2.88-.36l.36-.07c.84-.13,1.66-.28,2.49-.44l.91-.19c.68-.14,1.35-.3,2-.47l.85-.21c.89-.23,1.77-.48,2.65-.75l.69-.23c.67-.21,1.33-.43,2-.67l1-.37c.58-.21,1.15-.44,1.71-.67l.94-.39c.8-.34,1.59-.69,2.37-1.07.33-.15.65-.32,1-.48l1.47-.76,1.13-.61,1.3-.75,1.1-.65c.68-.42,1.36-.85,2-1.3.41-.27.8-.55,1.2-.83l1-.7,1.24-.93.84-.66c.9-.72,1.79-1.45,2.65-2.21l.3-.26,1.31-1.22.6-.57c.43-.42.87-.85,1.29-1.28l.38-.4c1.42-1.49,2.78-3,4.06-4.66l.33-.41a64.53,64.53,0,0,0,4.91-7.29l.18-.3c1.11-2,2.13-4,3-6,.33-.76.65-1.53,1-2.3,0-.12.1-.24.14-.36.28-.72.55-1.45.8-2.18.07-.18.13-.37.19-.56.24-.7.47-1.4.68-2.12l0-.11-20.51-5.05Z"/><path class="v6" d="M127.77,80.54c.06.95.1,1.91.1,2.88s0,1.69-.07,2.52c0,.24,0,.47,0,.71,0,.62-.1,1.23-.17,1.84l-.09.72c-.08.63-.17,1.27-.28,1.89,0,.15,0,.31-.08.46l19.53,5c.06-.3.12-.6.17-.9.11-.59.21-1.18.31-1.77s.13-.9.19-1.35c.1-.67.18-1.35.25-2l.09-.86c.08-.9.14-1.79.19-2.7l0-.65c0-1,.07-2,.07-2.94a67.94,67.94,0,0,0-2-16.15l-19.24,6.22A45.34,45.34,0,0,1,127.77,80.54Z"/></g></g></svg>
+      </div>
+      <h1>Vestmark AI Feedback Assistant</h1>
+      <p class="subtitle">Chat with our AI to shape your feedback.</p>
+      <div class="badges" id="badges">
+        <span class="badge" data-prompt="I have a usability issue to report">Usability Issues</span>
+        <span class="badge" data-prompt="I'd like to suggest a feature">Suggest a Feature</span>
+        <span class="badge" data-prompt="Something is just wrong and I need to report it">Something is just wrong</span>
+      </div>
+      <div style="margin-top:0.75rem;"><button type="button" class="btn btn-secondary" id="inbox-link">View all feedback</button></div>
+    </header>
+
+    <div id="chat" class="chat">
+      <div class="message assistant">
+        <div class="message-content">Thank you for offering to provide your feedback. Vestmark sincerely appreciates your input. Please let us know if you've encountered an issue, have a feature suggestion, or would like to share details about your experience.</div>
+      </div>
+    </div>
+
+    <div id="summary-overlay" class="summary-overlay hidden">
+      <div id="summary-panel" class="summary-panel">
+        <h2 id="summary-drag-handle">Your Feedback Summary</h2>
+        <div id="summary-display" class="summary-display"></div>
+        <textarea id="summary-content" class="summary-textarea hidden" rows="10"></textarea>
+        <div class="summary-actions">
+          <button id="btn-edit-summary" class="btn btn-secondary">Edit Summary</button>
+          <button id="btn-edit" class="btn btn-secondary">Keep Chatting</button>
+          <button id="btn-copy" class="btn btn-primary">Copy to Clipboard</button>
+          <button id="btn-submit" class="btn btn-primary">Send Feedback</button>
+          <button id="btn-new" class="btn btn-secondary">Start Over</button>
+        </div>
+      </div>
+    </div>
+
+    <form id="input-form" class="input-area">
+      <textarea id="user-input" placeholder="Type your message..." rows="2" autofocus></textarea>
+      <button type="submit" id="btn-send" class="btn btn-send" disabled>Send</button>
+      <button type="button" id="btn-done" class="btn btn-done">Done</button>
+      <button type="button" id="btn-cancel" class="btn btn-done">Cancel</button>
+    </form>
+  </div>
+
+  <div class="thank-you-overlay hidden" id="thank-you-overlay">
+    <div class="thank-you-dialog">
+      <div class="thank-you-title">Vestmark says</div>
+      <p>Thank you for your feedback</p>
+      <button class="btn btn-primary" id="btn-thank-you-ok">OK</button>
+    </div>
+  </div>
+
+  <div id="admin-view" class="admin hidden"></div>
+
+  <script>
+    const IS_PRODUCTION = location.hostname.includes("vestmark.build");
+    if (IS_PRODUCTION) document.getElementById("dev-banner").style.display = "none";
+    const API_URL = "https://50azd11ve6.execute-api.us-east-1.amazonaws.com";
+    const OKTA_ISSUER = "https://vestmark.okta.com";
+    const OKTA_CLIENT_ID = "0oaur1igtkzy40fek5d7";
+    const REDIRECT_URI = location.origin + location.pathname;
+
+    let accessToken = null;
+
+    const params = new URLSearchParams(location.search);
+    const context = IS_PRODUCTION
+      ? { source: params.get("source") || "", user: params.get("user") || "", email: params.get("email") || "", tenant: params.get("tenant") || "", role: params.get("role") || "", app: params.get("app") || "", version: params.get("version") || "", page: params.get("page") || "" }
+      : { source: "dev", user: "dev", email: "dev@vestmark.com", tenant: "dev", role: "developer", app: "feedback", version: "dev", page: "dev" };
+
+    let conversationHistory = [];
+
+    const SYSTEM_PROMPT = `You are a friendly feedback assistant for Vestmark. Your job is to help users articulate their feedback clearly - whether it's a bug report, feature request, or general experience feedback.
+
+Ask clarifying questions to gather specifics: what happened, what they expected, steps to reproduce (for bugs), who is affected, and priority/urgency.
+
+Keep responses concise (1-3 sentences). Be warm but professional.
+
+When the user says they are done or you have enough information, produce a structured summary in this exact format:
+---SUMMARY---
+**Type:** [Bug / Feature Request / General Feedback]
+**Summary:** [One-line summary]
+**Details:** [Full description]
+**Impact:** [Who is affected and how]
+**Priority:** [User's stated or implied priority]
+---END---
+
+Context about this user's session: ${JSON.stringify(context)}`;
+
+    function renderMarkdown(text) {
+      return text
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>")
+        .replace(/`(.+?)`/g, "<code style='background:#e2e8f0;padding:0.1rem 0.3rem;border-radius:3px;font-size:0.85em;'>$1</code>")
+        .replace(/\n/g, "<br>");
+    }
+
+    // --- Okta PKCE Auth ---
+    function generateRandomString(length) {
+      const array = new Uint8Array(length);
+      crypto.getRandomValues(array);
+      return Array.from(array, b => b.toString(16).padStart(2, "0")).join("").slice(0, length);
+    }
+
+    async function generateCodeChallenge(verifier) {
+      const data = new TextEncoder().encode(verifier);
+      const digest = await crypto.subtle.digest("SHA-256", data);
+      return btoa(String.fromCharCode(...new Uint8Array(digest)))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+
+    async function startOktaLogin() {
+      const state = generateRandomString(32);
+      const codeVerifier = generateRandomString(64);
+      sessionStorage.setItem("okta_state", state);
+      sessionStorage.setItem("okta_code_verifier", codeVerifier);
+      sessionStorage.setItem("okta_redirect_params", location.search);
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+      const authUrl = `${OKTA_ISSUER}/oauth2/v1/authorize?` + new URLSearchParams({
+        client_id: OKTA_CLIENT_ID,
+        response_type: "code",
+        scope: "openid profile email",
+        redirect_uri: REDIRECT_URI,
+        state: state,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+      }).toString();
+
+      location.href = authUrl;
+    }
+
+    async function handleOktaCallback() {
+      const urlParams = new URLSearchParams(location.search);
+      const code = urlParams.get("code");
+      const state = urlParams.get("state");
+
+      if (!code) return false;
+
+      const savedState = sessionStorage.getItem("okta_state");
+      if (state !== savedState) {
+        alert("Authentication error: state mismatch");
+        return false;
+      }
+
+      const codeVerifier = sessionStorage.getItem("okta_code_verifier");
+      const tokenRes = await fetch(`${OKTA_ISSUER}/oauth2/v1/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: OKTA_CLIENT_ID,
+          code: code,
+          redirect_uri: REDIRECT_URI,
+          code_verifier: codeVerifier,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        alert("Failed to exchange code for token");
+        return false;
+      }
+
+      const tokenData = await tokenRes.json();
+      accessToken = tokenData.access_token;
+      sessionStorage.setItem("okta_access_token", accessToken);
+
+      const savedParams = sessionStorage.getItem("okta_redirect_params") || "";
+      history.replaceState(null, "", location.pathname + savedParams);
+      return true;
+    }
+
+    // --- API calls ---
+    async function callApi(messages) {
+      if (!IS_PRODUCTION) {
+        return callMockApi(messages);
+      }
+
+      const res = await fetch(`${API_URL}/api/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ messages, system: SYSTEM_PROMPT }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `API error ${res.status}`);
+      }
+
+      const data = await res.json();
+      const text = data.content?.[0]?.text || "";
+
+      const summaryMatch = text.match(/---SUMMARY---([\s\S]*?)---END---/);
+      if (summaryMatch) {
+        return { reply: text.replace(/---SUMMARY---[\s\S]*?---END---/, "").trim() || "Here's your feedback summary:", summary: summaryMatch[1].trim() };
+      }
+      return { reply: text, summary: null };
+    }
+
+    // --- Persistence (Fabriq shared state) ---
+    const STATE_SCOPE = "shared";
+    const STATUSES = ["new", "triaged", "in progress", "done", "archived"];
+    const fabriqState = () => (window.fabriq && window.fabriq.state) || null;
+
+    function parseSummary(s) {
+      const field = (k) => {
+        const m = s.match(new RegExp("\\*\\*" + k + ":\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\*\\*[A-Za-z ]+:\\*\\*|$)"));
+        return m ? m[1].trim() : "";
+      };
+      return { type: field("Type"), title: field("Summary"), details: field("Details"), impact: field("Impact"), priority: field("Priority") };
+    }
+
+    function tokenEmail() {
+      try {
+        const p = JSON.parse(atob(accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        return p.email || p.sub || p.uid || "";
+      } catch (e) { return ""; }
+    }
+
+    async function saveFeedback(summary) {
+      const st = fabriqState();
+      if (!st) return null;
+      const now = new Date().toISOString();
+      const ref = "FB-" + now.slice(0, 10).replace(/-/g, "") + "-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+      const rec = { ref, created_at: now, user: tokenEmail() || context.email || "", ...parseSummary(summary), raw: summary, status: "new", notes: "", context };
+      await st.set(ref, rec, { scope: STATE_SCOPE });
+      return ref;
+    }
+
+    async function submitFeedback(summary) {
+      // Store first so feedback is captured even if the mail API is unavailable.
+      let saved = null;
+      try { saved = await saveFeedback(summary); }
+      catch (e) { console.warn("Could not save feedback to Fabriq state:", e); }
+
+      if (!IS_PRODUCTION) {
+        await new Promise(r => setTimeout(r, 600));
+        return { ok: true, ref: saved };
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/api/submit`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ summary }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Submit error ${res.status}`);
+        }
+
+        return await res.json();
+      } catch (err) {
+        if (saved) { console.warn("Submit API failed, feedback saved as " + saved + ":", err); return { ok: true, ref: saved }; }
+        throw err;
+      }
+    }
+
+    // Mock API for local dev
+    function callMockApi(messages) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          const lastMsg = messages[messages.length - 1]?.content || "";
+
+          if (lastMsg.toLowerCase().includes("done") || lastMsg.toLowerCase().includes("summary")) {
+            resolve({
+              reply: "Here's your feedback summary:",
+              summary: "**Type:** Feature Request\n**Summary:** User wants improved navigation\n**Details:** The sidebar navigation is difficult to use on smaller screens. User suggests a collapsible menu.\n**Impact:** All users on tablets and small laptops\n**Priority:** Medium"
+            });
+            return;
+          }
+
+          const responses = [
+            "Thanks for sharing that! Can you tell me more about when this happens? Is it every time or only in certain situations?",
+            "I appreciate the detail. Who else on your team is affected by this? And how would you rate the urgency?",
+            "Got it. And what would you *expect* to happen instead? That helps us understand the gap.",
+            "That's really helpful context. Is there anything else you'd like to add, or should I put together the summary?",
+          ];
+
+          const idx = Math.min(messages.filter(m => m.role === "assistant").length, responses.length - 1);
+          resolve({ reply: responses[idx], summary: null });
+        }, 800 + Math.random() * 500);
+      });
+    }
+
+    // --- App Logic ---
+    function initApp() {
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("input-form");
+      const input = document.getElementById("user-input");
+      const sendBtn = document.getElementById("btn-send");
+      const summaryOverlay = document.getElementById("summary-overlay");
+      const summaryPanel = document.getElementById("summary-panel");
+      const summaryDisplay = document.getElementById("summary-display");
+      const summaryContent = document.getElementById("summary-content");
+      const btnEditSummary = document.getElementById("btn-edit-summary");
+      const btnEdit = document.getElementById("btn-edit");
+      const btnCopy = document.getElementById("btn-copy");
+      const btnNew = document.getElementById("btn-new");
+      const btnDone = document.getElementById("btn-done");
+      const btnSubmit = document.getElementById("btn-submit");
+      const btnCancel = document.getElementById("btn-cancel");
+      const thankYouOverlay = document.getElementById("thank-you-overlay");
+      const btnThankYouOk = document.getElementById("btn-thank-you-ok");
+      const badges = document.getElementById("badges");
+
+      btnDone.classList.add("hidden");
+
+      badges.addEventListener("click", (e) => {
+        const badge = e.target.closest(".badge");
+        if (!badge) return;
+        const prompt = badge.dataset.prompt;
+        if (prompt) {
+          input.value = prompt;
+          sendBtn.disabled = false;
+          form.dispatchEvent(new Event("submit"));
+        }
+      });
+
+      input.addEventListener("input", () => {
+        sendBtn.disabled = input.value.trim() === "";
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 120) + "px";
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          if (!sendBtn.disabled) form.dispatchEvent(new Event("submit"));
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        addMessage("user", text, false);
+        input.value = "";
+        input.style.height = "auto";
+        sendBtn.disabled = true;
+        conversationHistory.push({ role: "user", content: text });
+        btnDone.classList.remove("hidden");
+        badges.classList.add("hidden");
+        const typing = showTyping();
+        try {
+          const data = await callApi(conversationHistory);
+          removeTyping(typing);
+          if (!data) return;
+          conversationHistory.push({ role: "assistant", content: data.reply });
+          if (data.summary) {
+            addMessage("assistant", "Great, I've put together a summary of your feedback. Please review it below.", true);
+            summaryContent.value = data.summary;
+            summaryDisplay.innerHTML = renderMarkdown(data.summary);
+            summaryDisplay.classList.remove("hidden");
+            summaryContent.classList.add("hidden");
+            btnEditSummary.textContent = "Edit Summary";
+            summaryOverlay.classList.remove("hidden");
+            btnDone.classList.add("hidden");
+          } else {
+            addMessage("assistant", data.reply, true);
+          }
+        } catch (err) {
+          removeTyping(typing);
+          addMessage("assistant", `Sorry, something went wrong: ${err.message}`, false);
+        }
+      });
+
+      btnDone.addEventListener("click", async () => {
+        if (conversationHistory.length === 0) return;
+        conversationHistory.push({ role: "user", content: "I'm done answering questions. Please generate the summary now." });
+        const typing = showTyping();
+        btnDone.disabled = true;
+        try {
+          const data = await callApi(conversationHistory);
+          removeTyping(typing);
+          btnDone.disabled = false;
+          if (!data) return;
+          conversationHistory.push({ role: "assistant", content: data.reply });
+          if (data.summary) {
+            addMessage("assistant", "Great, I've put together a summary of your feedback. Please review it below.", true);
+            summaryContent.value = data.summary;
+            summaryDisplay.innerHTML = renderMarkdown(data.summary);
+            summaryDisplay.classList.remove("hidden");
+            summaryContent.classList.add("hidden");
+            btnEditSummary.textContent = "Edit Summary";
+            summaryOverlay.classList.remove("hidden");
+            btnDone.classList.add("hidden");
+          } else {
+            addMessage("assistant", data.reply, true);
+          }
+        } catch (err) {
+          removeTyping(typing);
+          btnDone.disabled = false;
+          addMessage("assistant", `Sorry, something went wrong: ${err.message}`, false);
+        }
+      });
+
+      btnEdit.addEventListener("click", () => {
+        summaryOverlay.classList.add("hidden");
+        addMessage("assistant", "No problem - what would you like to change or add?", true);
+        input.focus();
+      });
+
+      btnEditSummary.addEventListener("click", () => {
+        const isEditing = !summaryContent.classList.contains("hidden");
+        if (isEditing) {
+          summaryDisplay.innerHTML = renderMarkdown(summaryContent.value);
+          summaryDisplay.classList.remove("hidden");
+          summaryContent.classList.add("hidden");
+          btnEditSummary.textContent = "Edit Summary";
+        } else {
+          summaryDisplay.classList.add("hidden");
+          summaryContent.classList.remove("hidden");
+          summaryContent.focus();
+          btnEditSummary.textContent = "Done Editing";
+        }
+      });
+
+      btnCopy.addEventListener("click", () => {
+        navigator.clipboard.writeText(summaryContent.value).then(() => {
+          btnCopy.textContent = "Copied!";
+          setTimeout(() => { btnCopy.textContent = "Copy to Clipboard"; }, 2000);
+        }).catch(() => {
+          summaryDisplay.classList.add("hidden");
+          summaryContent.classList.remove("hidden");
+          summaryContent.focus();
+          summaryContent.select();
+          btnEditSummary.textContent = "Done Editing";
+          btnCopy.textContent = "Press Ctrl/Cmd+C";
+          setTimeout(() => { btnCopy.textContent = "Copy to Clipboard"; }, 3000);
+        });
+      });
+
+      btnSubmit.addEventListener("click", async () => {
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Sending...";
+        try {
+          const summary = summaryContent.value;
+          await submitFeedback(summary);
+          btnSubmit.textContent = "Send Feedback";
+          btnSubmit.disabled = false;
+          summaryOverlay.classList.add("hidden");
+          thankYouOverlay.classList.remove("hidden");
+        } catch (err) {
+          btnSubmit.textContent = "Send Feedback";
+          btnSubmit.disabled = false;
+          alert("Failed to send feedback: " + err.message);
+        }
+      });
+      btnThankYouOk.addEventListener("click", () => { thankYouOverlay.classList.add("hidden"); window.close(); });
+      btnCancel.addEventListener("click", () => { window.close(); });
+
+      btnNew.addEventListener("click", () => {
+        conversationHistory = [];
+        chat.innerHTML = "";
+        addMessage("assistant", "Hi! I'd love to hear your feedback. What would you like to tell us?", true);
+        summaryOverlay.classList.add("hidden");
+        chat.classList.remove("hidden");
+        form.classList.remove("hidden");
+        badges.classList.remove("hidden");
+        input.focus();
+      });
+
+      function addMessage(role, text, useMarkdown) {
+        const div = document.createElement("div");
+        div.className = `message ${role}`;
+        const content = useMarkdown ? renderMarkdown(text) : escapeHtml(text).replace(/\n/g, "<br>");
+        div.innerHTML = `<div class="message-content">${content}</div>`;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      function showTyping() {
+        const div = document.createElement("div");
+        div.className = "typing-indicator";
+        div.innerHTML = '<span class="typing-label">Thinking...</span><span></span><span></span><span></span>';
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+        return div;
+      }
+
+      function removeTyping(el) { el?.remove(); }
+
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // Drag logic for summary panel
+      const dragHandle = document.getElementById("summary-drag-handle");
+      let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
+
+      dragHandle.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        summaryPanel.classList.add("dragging");
+        const rect = summaryPanel.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+        summaryPanel.style.position = "fixed";
+        summaryPanel.style.left = rect.left + "px";
+        summaryPanel.style.top = rect.top + "px";
+        summaryPanel.style.margin = "0";
+        e.preventDefault();
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        summaryPanel.style.left = (e.clientX - dragOffsetX) + "px";
+        summaryPanel.style.top = (e.clientY - dragOffsetY) + "px";
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (isDragging) {
+          isDragging = false;
+          summaryPanel.classList.remove("dragging");
+        }
+      });
+    }
+
+    // --- Feedback inbox: open with ?view=all ---
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    // The state list shape isn't fixed in the docs, so accept an array, {items|rows|entries}, or a key->value map.
+    function normalizeList(res) {
+      let arr = Array.isArray(res) ? res : (res && (res.items || res.rows || res.entries)) || null;
+      if (!arr) arr = Object.entries(res || {}).map(([key, value]) => ({ key, value }));
+      return arr.map((e) => {
+        let v = e && (e.value !== undefined ? e.value : e.data !== undefined ? e.data : e);
+        if (typeof v === "string") { try { v = JSON.parse(v); } catch (x) { v = null; } }
+        return v && v.ref ? { key: e.key || v.ref, rec: v } : null;
+      }).filter(Boolean);
+    }
+
+    async function copyText(text) {
+      try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall through (blocked in some frames) */ }
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      ta.remove();
+      return ok;
+    }
+
+    const itemText = (r) => `Ref: ${r.ref}\nDate: ${String(r.created_at || "").slice(0, 10)}\nFrom: ${r.user || ""}\nStatus: ${r.status || ""}${r.notes ? "\nNotes: " + r.notes : ""}\n\n${r.raw || ""}`;
+
+    async function initAdmin() {
+      document.querySelector(".container").classList.add("hidden");
+      const root = document.getElementById("admin-view");
+      root.classList.remove("hidden");
+      const st = fabriqState();
+      if (!st) { root.innerHTML = '<div class="empty">Feedback storage is only available on the published Stitch.</div>'; return; }
+
+      root.innerHTML = `
+        <h1>Feedback inbox</h1>
+        <p class="sub">Everyone with access to this Stitch can see and edit these items. <a href="${esc(location.pathname)}">Back to the assistant</a></p>
+        <div class="bar">
+          <input id="f-q" type="search" placeholder="Search feedback...">
+          <select id="f-status"><option value="">All statuses</option>${STATUSES.map((s) => `<option>${s}</option>`).join("")}</select>
+          <button class="btn btn-secondary" id="f-refresh">Refresh</button>
+          <button class="btn btn-primary" id="f-copyall">Copy all</button>
+          <button class="btn btn-primary" id="f-csv">Export CSV</button>
+          <span class="count" id="f-count"></span>
+        </div>
+        <div id="f-body"></div>`;
+
+      let items = [];
+      const body = root.querySelector("#f-body");
+      const q = root.querySelector("#f-q");
+      const fs = root.querySelector("#f-status");
+
+      const visible = () => {
+        const term = q.value.trim().toLowerCase();
+        return items
+          .filter(({ rec }) => (!fs.value || rec.status === fs.value) && (!term || JSON.stringify(rec).toLowerCase().includes(term)))
+          .sort((a, b) => String(b.rec.created_at).localeCompare(String(a.rec.created_at)));
+      };
+
+      function render() {
+        const rows = visible();
+        root.querySelector("#f-count").textContent = `${rows.length} of ${items.length}`;
+        if (!rows.length) { body.innerHTML = '<div class="empty">No feedback yet.</div>'; return; }
+        body.innerHTML = `<table><thead><tr><th>Ref</th><th>Date</th><th>From</th><th>Type</th><th>Feedback</th><th>Priority</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>` +
+          rows.map(({ key, rec }) => `<tr data-key="${esc(key)}">
+            <td class="ref">${esc(rec.ref)}</td>
+            <td>${esc(String(rec.created_at || "").slice(0, 10))}</td>
+            <td>${esc(rec.user)}</td>
+            <td>${esc(rec.type)}</td>
+            <td><details><summary>${esc(rec.title || "(no title)")}</summary><pre>${esc(rec.raw || "")}</pre></details></td>
+            <td>${esc(rec.priority)}</td>
+            <td><select data-f="status">${STATUSES.map((s) => `<option${s === rec.status ? " selected" : ""}>${s}</option>`).join("")}</select></td>
+            <td><input data-f="notes" value="${esc(rec.notes)}" placeholder="Add a note"><span class="saved"></span></td>
+            <td><button class="btn btn-secondary" data-copy="1">Copy</button></td>
+          </tr>`).join("") + `</tbody></table>`;
+      }
+
+      async function load() {
+        body.innerHTML = '<div class="empty">Loading...</div>';
+        try { items = normalizeList(await st.list({ scope: STATE_SCOPE })); render(); }
+        catch (e) { body.innerHTML = `<div class="empty">Could not load feedback: ${esc(e.message || e)}</div>`; }
+      }
+
+      const flash = (btn, ok) => { const t = btn.textContent; btn.textContent = ok ? "Copied!" : "Copy failed"; setTimeout(() => { btn.textContent = t; }, 1500); };
+      body.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-copy]");
+        if (!btn) return;
+        const item = items.find((i) => i.key === btn.closest("tr").dataset.key);
+        if (item) flash(btn, await copyText(itemText(item.rec)));
+      });
+      root.querySelector("#f-copyall").addEventListener("click", async (e) => {
+        flash(e.currentTarget, await copyText(visible().map(({ rec }) => itemText(rec)).join("\n\n----------\n\n")));
+      });
+
+      body.addEventListener("change", async (e) => {
+        const field = e.target.dataset.f;
+        const tr = e.target.closest("tr");
+        if (!field || !tr) return;
+        const item = items.find((i) => i.key === tr.dataset.key);
+        if (!item) return;
+        const mark = tr.querySelector(".saved");
+        item.rec[field] = e.target.value;
+        try { await st.set(item.key, item.rec, { scope: STATE_SCOPE }); mark.textContent = "saved"; }
+        catch (err) { mark.textContent = ""; alert("Could not save: " + (err.message || err)); }
+        setTimeout(() => { mark.textContent = ""; }, 1500);
+      });
+
+      q.addEventListener("input", render);
+      fs.addEventListener("change", render);
+      root.querySelector("#f-refresh").addEventListener("click", load);
+      root.querySelector("#f-csv").addEventListener("click", () => {
+        const cols = ["ref", "created_at", "user", "type", "title", "details", "impact", "priority", "status", "notes"];
+        const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        const csv = [cols.join(","), ...visible().map(({ rec }) => cols.map((c) => cell(rec[c])).join(","))].join("\n");
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+        a.download = "feedback.csv";
+        a.click();
+      });
+
+      load();
+    }
+
+    (async () => {
+      if (IS_PRODUCTION) {
+        const handled = await handleOktaCallback();
+        if (!handled) {
+          accessToken = sessionStorage.getItem("okta_access_token");
+          if (!accessToken) {
+            await startOktaLogin();
+            return;
+          }
+        }
+      }
+      console.info("feedback-assistant build: inbox-v9");
+      document.getElementById("inbox-link").addEventListener("click", (e) => {
+        e.preventDefault();
+        location.hash = "#inbox";
+        initAdmin();
+      });
+      if (params.get("view") === "all" || location.hash === "#inbox") {
+        initAdmin();
+      } else initApp();
+    })();
+  </script>
+</body>
+</html>
