@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback Admin</title>
+  <link rel="stylesheet" href="app.css">
+  <style>
+    body { display: block; padding: 2rem 1.5rem; }
+    .wrap { max-width: 1200px; margin: 1.5rem auto 0; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .top h1 { font-size: 1.4rem; }
+    .top a { color: #3b82f6; text-decoration: none; font-size: 0.85rem; }
+    .stats { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .stat { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.9rem; font-size: 0.8rem; color: #64748b; }
+    .stat b { display: block; font-size: 1.2rem; color: #1a1a2e; }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filters input, .filters select, .field select, .field input, .field textarea { font: inherit; font-size: 0.85rem; padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; }
+    .filters input { flex: 1; min-width: 200px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: #f8fafc; }
+    .pill { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.55rem; border-radius: 999px; background: #e2e8f0; color: #334155; white-space: nowrap; }
+    .pill.new { background: #dbeafe; color: #1d4ed8; } .pill.done { background: #dcfce7; color: #166534; }
+    .pill.in_progress, .pill.triaged { background: #fef3c7; color: #92400e; } .pill.wont_fix { background: #f1f5f9; color: #64748b; }
+    .pill.sent { background: #dcfce7; color: #166534; } .pill.failed { background: #fee2e2; color: #b91c1c; }
+    .pager { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; }
+    .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: #fff; box-shadow: -8px 0 30px rgba(0,0,0,0.15); padding: 1.5rem; overflow-y: auto; z-index: 200; }
+    .drawer h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .meta { color: #64748b; font-size: 0.78rem; margin-bottom: 1rem; }
+    .field { margin-bottom: 0.9rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: #64748b; }
+    .field textarea { min-height: 90px; resize: vertical; max-height: none; }
+    .field .val { color: #1a1a2e; font-size: 0.9rem; white-space: pre-wrap; line-height: 1.5; }
+    .row { display: flex; gap: 0.75rem; } .row .field { flex: 1; }
+    .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+    .err { color: #b91c1c; font-size: 0.75rem; }
+    .empty { text-align: center; color: #94a3b8; padding: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="dev-banner hidden" id="dev-banner">DEV MODE — Auth bypassed, mock user</div>
+  <div class="wrap">
+    <div class="top">
+      <h1>Feedback Admin</h1>
+      <div><span id="who" style="font-size:0.8rem;color:#64748b"></span> &nbsp; <a href="/">← Give feedback</a> &nbsp; <a href="#" id="export">Export CSV</a></div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="filters">
+      <input id="q" type="search" placeholder="Search title, details, user, reference, notes…">
+      <select id="f-status"><option value="">All statuses</option></select>
+      <select id="f-type"><option value="">All types</option><option>Bug</option><option>Feature Request</option><option>General Feedback</option></select>
+    </div>
+    <table>
+      <thead><tr><th>Received</th><th>Type</th><th>Summary</th><th>From</th><th>Priority</th><th>Status</th><th>Email</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="pager"><span id="count"></span><span><button class="btn btn-secondary" id="prev">Prev</button> <button class="btn btn-secondary" id="next">Next</button></span></div>
+  </div>
+
+  <div class="drawer hidden" id="drawer"></div>
+
+  <script src="auth.js"></script>
+  <script>
+    const PAGE = 25;
+    let offset = 0, total = 0, items = [], statuses = [];
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
+    const label = (s) => s.replace("_", " ");
+    const when = (iso) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+    async function api(url, opts) {
+      const res = await Auth.api(url, opts);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Error ${res.status}`);
+      return res.json();
+    }
+
+    async function loadStats() {
+      const s = await api("/api/admin/stats");
+      statuses = s.statuses;
+      if ($("f-status").options.length === 1) {
+        statuses.forEach((v) => $("f-status").add(new Option(label(v), v)));
+      }
+      const n = (arr, k, v) => arr.find((r) => r[k] === v)?.n || 0;
+      const sum = s.byStatus.reduce((a, r) => a + r.n, 0);
+      $("stats").innerHTML =
+        `<div class="stat"><b>${sum}</b>Total</div>` +
+        statuses.map((v) => `<div class="stat"><b>${n(s.byStatus, "status", v)}</b>${label(v)}</div>`).join("") +
+        `<div class="stat"><b>${n(s.email, "email_status", "sent")}</b>emailed</div>` +
+        `<div class="stat"><b>${n(s.email, "email_status", "failed")}</b>email failed</div>`;
+    }
+
+    async function load() {
+      const p = new URLSearchParams({ limit: PAGE, offset, q: $("q").value, status: $("f-status").value, type: $("f-type").value });
+      const data = await api("/api/admin/feedback?" + p);
+      items = data.items; total = data.total;
+      $("rows").innerHTML = items.length
+        ? items.map((r, i) => `<tr data-i="${i}">
+            <td>${when(r.created_at)}</td><td>${esc(r.type || "—")}</td>
+            <td><b>${esc(r.title || r.ref)}</b></td><td>${esc(r.user_email || "—")}</td>
+            <td>${esc(r.priority || "—")}</td><td><span class="pill ${r.status}">${label(r.status)}</span></td>
+            <td><span class="pill ${r.email_status}">${label(r.email_status)}</span></td></tr>`).join("")
+        : `<tr><td colspan="7" class="empty">No feedback found</td></tr>`;
+      $("count").textContent = total ? `${offset + 1}–${Math.min(offset + PAGE, total)} of ${total}` : "";
+      $("prev").disabled = offset === 0;
+      $("next").disabled = offset + PAGE >= total;
+    }
+
+    function openDrawer(r) {
+      const d = $("drawer");
+      d.innerHTML = `
+        <h2>${esc(r.title || r.ref)}</h2>
+        <div class="meta">${esc(r.ref)} · ${when(r.created_at)} · ${esc(r.user_name || "")} ${r.user_email ? "&lt;" + esc(r.user_email) + "&gt;" : ""}</div>
+        <div class="field">Type<div class="val">${esc(r.type || "—")}</div></div>
+        <div class="field">Details<div class="val">${esc(r.details || r.raw_summary)}</div></div>
+        <div class="field">Impact<div class="val">${esc(r.impact || "—")}</div></div>
+        <div class="row">
+          <label class="field">Status<select id="d-status">${statuses.map((v) => `<option value="${v}" ${v === r.status ? "selected" : ""}>${label(v)}</option>`).join("")}</select></label>
+          <label class="field">Priority<input id="d-priority" value="${esc(r.priority || "")}"></label>
+        </div>
+        <label class="field">Admin notes<textarea id="d-notes">${esc(r.admin_notes)}</textarea></label>
+        <div class="field">Source context<div class="val">${esc(Object.entries(r.context).map(([k, v]) => k + ": " + v).join("\n") || "—")}</div></div>
+        <div class="field">Email<div class="val">${esc(r.email_status)}${r.email_error ? " — " + esc(r.email_error) : ""}</div></div>
+        <div class="err" id="d-err"></div>
+        <div class="actions">
+          <button class="btn btn-primary" id="d-save">Save</button>
+          <button class="btn btn-secondary" id="d-resend">Resend email</button>
+          <button class="btn btn-danger" id="d-delete">Delete</button>
+          <button class="btn btn-secondary" id="d-close">Close</button>
+        </div>`;
+      d.classList.remove("hidden");
+      const run = (fn) => async () => { try { $("d-err").textContent = ""; await fn(); } catch (e) { $("d-err").textContent = e.message; } };
+      $("d-close").onclick = () => d.classList.add("hidden");
+      $("d-save").onclick = run(async () => {
+        const upd = await api(`/api/admin/feedback/${r.id}`, { method: "PATCH", body: JSON.stringify({ status: $("d-status").value, priority: $("d-priority").value, admin_notes: $("d-notes").value }) });
+        openDrawer(upd); await Promise.all([load(), loadStats()]);
+      });
+      $("d-resend").onclick = run(async () => {
+        openDrawer(await api(`/api/admin/feedback/${r.id}/resend`, { method: "POST" })); await Promise.all([load(), loadStats()]);
+      });
+      $("d-delete").onclick = run(async () => {
+        if (!confirm(`Delete ${r.ref}? This cannot be undone.`)) return;
+        await api(`/api/admin/feedback/${r.id}`, { method: "DELETE" });
+        d.classList.add("hidden"); await Promise.all([load(), loadStats()]);
+      });
+    }
+
+    $("rows").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-i]"); if (tr) openDrawer(items[tr.dataset.i]); });
+    let t; $("q").addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { offset = 0; load(); }, 250); });
+    for (const id of ["f-status", "f-type"]) $(id).addEventListener("change", () => { offset = 0; load(); });
+    $("prev").onclick = () => { offset = Math.max(0, offset - PAGE); load(); };
+    $("next").onclick = () => { offset += PAGE; load(); };
+    $("export").onclick = async (e) => {
+      e.preventDefault();
+      const res = await Auth.api("/api/admin/export.csv");
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await res.blob()), download: "feedback.csv" });
+      a.click(); URL.revokeObjectURL(a.href);
+    };
+
+    (async () => {
+      try {
+        const auth = await Auth.init();
+        if (auth.dev) $("dev-banner").classList.remove("hidden");
+        const me = await (await Auth.api("/api/me")).json();
+        $("who").textContent = me.email;
+        if (!me.isAdmin) { document.querySelector(".wrap").innerHTML = "<h1>Not authorized</h1><p>Your account is not on the admin list.</p>"; return; }
+        await loadStats(); await load();
+      } catch (e) { document.body.textContent = e.message; }
+    })();
+  </script>
+</body>
+</html>

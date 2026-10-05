@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vestmark AI Feedback Assistant</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="dev-banner hidden" id="dev-banner">DEV MODE — Auth bypassed, mock user</div>
+  <div class="container">
+    <header>
+      <div class="user-badge" id="user-badge"></div>
+      <div class="logo"><img class="logo-icon" src="Vestmark_logo-4c.svg" alt="Vestmark"></div>
+      <h1>Vestmark AI Feedback Assistant</h1>
+      <p class="subtitle">Chat with our AI to shape your feedback.</p>
+      <div class="badges" id="badges">
+        <span class="badge" data-prompt="I have a usability issue to report">Usability Issues</span>
+        <span class="badge" data-prompt="I'd like to suggest a feature">Suggest a Feature</span>
+        <span class="badge" data-prompt="Something is just wrong and I need to report it">Something is just wrong</span>
+      </div>
+    </header>
+
+    <div id="chat" class="chat">
+      <div class="message assistant">
+        <div class="message-content">Thank you for offering to provide your feedback. Vestmark sincerely appreciates your input. Please let us know if you've encountered an issue, have a feature suggestion, or would like to share details about your experience.</div>
+      </div>
+    </div>
+
+    <div id="summary-overlay" class="summary-overlay hidden">
+      <div id="summary-panel" class="summary-panel">
+        <h2 id="summary-drag-handle">Your Feedback Summary</h2>
+        <div id="summary-display" class="summary-display"></div>
+        <textarea id="summary-content" class="summary-textarea hidden" rows="10"></textarea>
+        <div class="summary-actions">
+          <button id="btn-edit-summary" class="btn btn-secondary">Edit Summary</button>
+          <button id="btn-edit" class="btn btn-secondary">Keep Chatting</button>
+          <button id="btn-copy" class="btn btn-primary">Copy to Clipboard</button>
+          <button id="btn-submit" class="btn btn-primary">Send Feedback</button>
+          <button id="btn-new" class="btn btn-secondary">Start Over</button>
+        </div>
+      </div>
+    </div>
+
+    <form id="input-form" class="input-area">
+      <textarea id="user-input" placeholder="Type your message..." rows="2" autofocus></textarea>
+      <button type="submit" id="btn-send" class="btn btn-send" disabled>Send</button>
+      <button type="button" id="btn-done" class="btn btn-done">Done</button>
+      <button type="button" id="btn-cancel" class="btn btn-done">Cancel</button>
+    </form>
+  </div>
+
+  <div class="thank-you-overlay hidden" id="thank-you-overlay">
+    <div class="thank-you-dialog">
+      <div class="thank-you-title">Vestmark says</div>
+      <p>Thank you for your feedback</p>
+      <div class="ref" id="thank-you-ref"></div>
+      <button class="btn btn-primary" id="btn-thank-you-ok">OK</button>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
